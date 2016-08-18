@@ -72,14 +72,26 @@ rtems_capture_print_timestamp (uint64_t uptime)
 }
 
 void
-rtems_capture_print_record_task( uint32_t cpu, rtems_capture_record_t* rec)
+rtems_capture_print_record_task( uint32_t cpu, rtems_capture_record_t* rec, char* filename)
 {
   rtems_capture_task_record_t* task_rec = (rtems_capture_task_record_t*) rec;
+  char *name = "TASK_RECORD";
 
+  //ctf header for record_task event
+  FILE* out = fopen (filename, "a+b");
+  if (out != NULL)
+  {
+    uint32_t stream_id = 0, event_id = 0;
+    fprintf (out, "%" PRIu32 "%" PRIu32 "%" PRIu64 "", stream_id, event_id, rec->time);
+  }
   fprintf(stdout,"%2" PRId32 " ", cpu);
   rtems_capture_print_timestamp (rec->time);
   fprintf (stdout, "              ");
   rtems_monitor_dump_id (rec->task_id);
+
+  if (out != NULL)
+    fprintf (out, "%" PRId32 "%" PRIu64 "%" PRIu32 "", cpu, rec->time, rec->task_id);
+
   if (rtems_object_id_get_api(rec->task_id) != OBJECTS_POSIX_API)
   {
     fprintf (stdout, " %c%c%c%c",
@@ -87,10 +99,20 @@ rtems_capture_print_record_task( uint32_t cpu, rtems_capture_record_t* rec)
              (char) (task_rec->name >> 16) & 0xff,
              (char) (task_rec->name >> 8) & 0xff,
              (char) (task_rec->name >> 0) & 0xff);
+    if (out != NULL)
+    {
+      fprintf (out, "%c%c%c%c\0",
+               (char) (task_rec->name >> 24) & 0xff,
+               (char) (task_rec->name >> 16) & 0xff,
+               (char) (task_rec->name >> 8) & 0xff,
+               (char) (task_rec->name >> 0) & 0xff);
+    }
   }
   else
   {
     fprintf (stdout, " ____");
+    if (out != NULL)
+      fprintf (out, "____\0");
   }
   fprintf(stdout, " %3" PRId32 " %3" PRId32 " ",
              (rec->events >> RTEMS_CAPTURE_REAL_PRIORITY_EVENT) & 0xff,
@@ -98,33 +120,62 @@ rtems_capture_print_record_task( uint32_t cpu, rtems_capture_record_t* rec)
    fprintf (stdout, "%3" PRId32   " %6" PRId32 "  TASK_RECORD\n",
             task_rec->start_priority,
             task_rec->stack_size);
+  if (out != NULL)
+  {
+    fprintf (out, "%" PRId32 "%" PRId32 "%" PRId32   "%" PRId32 "%s",
+            (rec->events >> RTEMS_CAPTURE_REAL_PRIORITY_EVENT) & 0xff,
+            (rec->events >> RTEMS_CAPTURE_CURR_PRIORITY_EVENT) & 0xff,
+            task_rec->start_priority,
+            task_rec->stack_size,
+            name);
+  }
+  fflush (out);
+  fclose (out);
 }
 
 void
 rtems_capture_print_record_capture(
   uint32_t                cpu,
   rtems_capture_record_t* rec,
-  uint64_t                diff
+  uint64_t                diff,
+  char*                   filename
 ){
   uint32_t                     event;
   int                          e;
-
   event = rec->events >> RTEMS_CAPTURE_EVENT_START;
+  FILE* out = fopen (filename, "a+b");
   for (e = RTEMS_CAPTURE_EVENT_START; e < RTEMS_CAPTURE_EVENT_END; e++)
   {
+    //ctf header for record_capture event
+    if (out != NULL)
+    {
+      uint32_t stream_id = 0, event_id = 1;
+      fprintf (out, "%" PRIu32 "%" PRIu32 "%" PRIu64 "", stream_id, event_id, rec->time);
+    }
     if (event & 1)
     {
       fprintf(stdout,"%2" PRId32 " ", cpu);
       rtems_capture_print_timestamp (rec->time);
       fprintf (stdout, " %12" PRId32 " ", (uint32_t) diff);
       rtems_monitor_dump_id (rec->task_id);
+
       fprintf(stdout, "      %3" PRId32 " %3" PRId32 "             %s\n",
              (rec->events >> RTEMS_CAPTURE_REAL_PRIORITY_EVENT) & 0xff,
              (rec->events >> RTEMS_CAPTURE_CURR_PRIORITY_EVENT) & 0xff,
              rtems_capture_event_text (e));
+      if (out != NULL)
+      {
+        fprintf (out, "%" PRId32 "%" PRIu64 "%" PRIu32 "%" PRIu32 "%" PRId32 "%" PRId32 "%s",
+                cpu, rec->time, (uint32_t) diff, rec->task_id,
+                (rec->events >> RTEMS_CAPTURE_REAL_PRIORITY_EVENT) & 0xff,
+                (rec->events >> RTEMS_CAPTURE_CURR_PRIORITY_EVENT) & 0xff,
+                rtems_capture_event_text (e));
+      }
     }
     event >>= 1;
   }
+  fflush (out);
+  fclose (out);
 }
 
 /*
@@ -134,7 +185,7 @@ rtems_capture_print_record_capture(
  */
 
 void
-rtems_capture_print_trace_records ( int total, bool csv )
+rtems_capture_print_trace_records ( int total, bool csv, char format, char* filename )
 {
   rtems_status_code       sc;
   int                     count;
@@ -144,6 +195,17 @@ rtems_capture_print_trace_records ( int total, bool csv )
   uint32_t                cpu = 0;
   rtems_capture_record_t* rec_out;
 
+  FILE* trace_file = NULL;
+  if (format == 'c')
+  {
+    trace_file = fopen (filename, "w+b");
+    if (trace_file == NULL)
+    {
+      perror (filename);
+      printf ("error: opening CTF trace stream file, error no: %d\n", errno);
+      return;
+    }
+  }
   count = rtems_get_processor_count();
   per_cpu = calloc( count, sizeof(*per_cpu) );
 
@@ -194,9 +256,22 @@ rtems_capture_print_trace_records ( int total, bool csv )
         (rec_out->events >> RTEMS_CAPTURE_EVENT_START),
         (uint64_t) rec_out->time
       );
+      if (format == 'c')
+      {
+        fprintf(trace_file,
+          "%" PRIu32 "%" PRIu32 "%" PRIu32
+           "%" PRIu32 "%" PRIx32 "%" PRId64 "",
+          cpu,
+          (uint32_t) rec_out->task_id,
+          (rec_out->events >> RTEMS_CAPTURE_REAL_PRIORITY_EVENT) & 0xff,
+          (rec_out->events >> RTEMS_CAPTURE_CURR_PRIORITY_EVENT) & 0xff,
+          (rec_out->events >> RTEMS_CAPTURE_EVENT_START),
+          (uint64_t) rec_out->time
+        );
+      }
     } else {
       if ((rec_out->events >> RTEMS_CAPTURE_EVENT_START) == 0)
-          rtems_capture_print_record_task(cpu, rec_out );
+          rtems_capture_print_record_task(cpu, rec_out, filename );
       else {
         uint64_t diff;
         if (per_cpu[cpu].last_t != 0)
@@ -204,8 +279,7 @@ rtems_capture_print_trace_records ( int total, bool csv )
         else
           diff = 0;
         per_cpu[cpu].last_t = rec_out->time;
-
-        rtems_capture_print_record_capture( cpu, rec_out, diff );
+        rtems_capture_print_record_capture( cpu, rec_out, diff, filename );
       }
     }
 
@@ -224,7 +298,6 @@ rtems_capture_print_trace_records ( int total, bool csv )
       per_cpu[cpu].read = 0;
       per_cpu[cpu].printed = 0;
     }
-
     total --;
   }
 
@@ -235,6 +308,7 @@ rtems_capture_print_trace_records ( int total, bool csv )
     }
   }
 
+  fclose (trace_file);
   free( per_cpu );
 }
 

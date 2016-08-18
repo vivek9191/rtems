@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 #include "capture.h"
-
+#include <stdio.h>
 /*
  * Global capture flags.
  */
@@ -281,7 +281,7 @@ void rtems_capture_record_close( void *rec, rtems_capture_record_context_t* cont
  * @param[in] total specifies the number of records to print
  * @param[in] csv specifies a comma seperated value format
  */
-void rtems_capture_print_trace_records ( int total, bool csv );
+void rtems_capture_print_trace_records ( int total, bool csv, char trace_format, char* trace_filename );
 
 /**
  * @brief Capture print timestamp.
@@ -304,7 +304,8 @@ void rtems_capture_print_timestamp (uint64_t uptime);
  */
 void rtems_capture_print_record_task(
   uint32_t                cpu,
-  rtems_capture_record_t* rec
+  rtems_capture_record_t* rec,
+  char*                   filename
 );
 
 /**
@@ -320,7 +321,8 @@ void rtems_capture_print_record_task(
 void rtems_capture_print_record_capture(
   uint32_t                cpu,
   rtems_capture_record_t* rec,
-  uint64_t                diff
+  uint64_t                diff,
+  char*                   filename
 );
 
 /**

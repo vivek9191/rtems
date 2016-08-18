@@ -963,8 +963,10 @@ rtems_capture_cli_trace_records (int                                argc,
                                  bool                               verbose RC_UNUSED)
 {
   bool                    csv = false;
+  char*                   filename = "/trace/stream.txt";
   static int              dump_total = 22;
   int                     arg;
+  char                    format = 'n';
 
   for (arg = 1; arg < argc; arg++)
   {
@@ -972,28 +974,59 @@ rtems_capture_cli_trace_records (int                                argc,
     {
       if (argv[arg][1] == 'c')
         csv = true;
-      else
-        fprintf (stdout, "warning: option -%c ignored\n", argv[arg][1]);
-    }
-    else
-    {
-      size_t i;
-      size_t l;
-
-      l = strlen (argv[arg]);
-
-      for (i = 0; i < l; i++)
-        if (!isdigit ((unsigned char)argv[arg][i]))
+      else if (argv[arg][1] == 'f')
+      {
+        if (arg + 1 < argc && argv[++arg][0] == 'c')
         {
-          fprintf (stdout, "error: not a number\n");
+            format = 'c';
+            fprintf (stdout, "format: ctf\n");
+        }
+        else
+        {
+          fprintf (stdout, "error: enter format\n");
           return;
         }
+      }
+      else if (argv[arg][1] == 'o')
+      {
+        if (arg + 1 < argc)
+        {
+          filename = argv[++arg];
+          fprintf (stdout, "filename: %s\n", argv[arg]);
+        }
+        else
+        {
+          fprintf (stdout, "error: enter file name\n");
+          return;
+        }
+      }
+      else if (argv[arg][1] == 'r')
+      {
+        size_t i;
+        size_t l;
 
-      dump_total = strtoul (argv[arg], 0, 0);
+        if (arg + 1 < argc)
+        {
+          l = strlen (argv[++arg]);
+
+          for (i = 0; i < l; i++)
+            if (!isdigit ((unsigned char)argv[arg][i]))
+            {
+              fprintf (stdout, "error: not a number\n");
+              return;
+            }
+
+          dump_total = strtoul (argv[arg], 0, 0);
+        }
+        else
+        {
+          fprintf (stdout, "warning: option -%c ignored\n", argv[arg][1]);
+        }
+      }
     }
   }
 
-  rtems_capture_print_trace_records( dump_total, csv );
+  rtems_capture_print_trace_records( dump_total, csv, format, filename );
 }
 
 /*
