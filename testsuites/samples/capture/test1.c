@@ -141,7 +141,7 @@ capture_test_1 (int                                argc,
 
   name = rtems_build_name('C', 'T', '1', 'a');
 
-  sc = rtems_task_create (name, 102, 2 * 1024,
+  sc = rtems_task_create (name, 95, 2 * 1024,
                           RTEMS_NO_FLOATING_POINT | RTEMS_LOCAL,
                           RTEMS_PREEMPT | RTEMS_TIMESLICE | RTEMS_NO_ASR,
                           &id[0]);
@@ -169,7 +169,7 @@ capture_test_1 (int                                argc,
 
   name = rtems_build_name('C', 'T', '1', 'b');
 
-  sc = rtems_task_create (name, 101, 2 * 1024,
+  sc = rtems_task_create (name, 94, 2 * 1024,
                           RTEMS_NO_FLOATING_POINT | RTEMS_LOCAL,
                           RTEMS_PREEMPT | RTEMS_TIMESLICE | RTEMS_NO_ASR,
                           &id[1]);
@@ -199,7 +199,7 @@ capture_test_1 (int                                argc,
 
   name = rtems_build_name('C', 'T', '1', 'c');
 
-  sc = rtems_task_create (name, 100, 2 * 1024,
+  sc = rtems_task_create (name, 93, 2 * 1024,
                           RTEMS_NO_FLOATING_POINT | RTEMS_LOCAL,
                           RTEMS_PREEMPT | RTEMS_TIMESLICE | RTEMS_NO_ASR,
                           &id[2]);

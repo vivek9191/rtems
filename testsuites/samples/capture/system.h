@@ -38,7 +38,7 @@ extern void setup_tasks_to_watch(void);
 /* configuration information */
 
 #include <bsp.h> /* for device driver prototypes */
-
+#define CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS 20
 #define CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
 
@@ -51,6 +51,11 @@ extern void setup_tasks_to_watch(void);
 #define CONFIGURE_MAXIMUM_USER_EXTENSIONS (5)
 
 #define CONFIGURE_INITIAL_EXTENSIONS RTEMS_TEST_INITIAL_EXTENSION
+
+#define CONFIGURE_MAXIMUM_DRIVERS 10
+#define CONFIGURE_FILESYSTEM_NFS
+#define CONFIGURE_UNIFIED_WORK_AREAS
+#define CONFIGURE_UNLIMITED_OBJECTS
 
 #include <rtems/confdefs.h>
 
