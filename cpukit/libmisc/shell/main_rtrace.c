@@ -362,9 +362,14 @@ rtems_trace_buffering_shell_trace (int argc, char *argv[])
 
   while ((r < records) && (count < end))
   {
-    if (format == 'c' && r%2 == 0)
+    if (format == 'c' && count == start)
+      r = r + 3;
+    if (format == 'c' && count > start)
     {
-      r = r + 4;
+      if (trace_buffer[r] == -1040441407)
+        r = r + 3;
+      else
+        r = r + 1;
     }
     const uint32_t header = trace_buffer[r];
     const uint32_t func_index = header & 0xffff;
@@ -618,13 +623,12 @@ rtems_trace_buffering_shell_save_raw (int argc, char *argv[])
 {
   uint32_t* trace_buffer;
   uint32_t  records;
-  uint8_t*  buffer;
+  uint32_t* buffer;
   size_t    length;
-  int       out;
-  uint8_t*  buf;
-  uint8_t*  in;
+  FILE      *out;
+  uint32_t  prev_stream_id = -1;
 
-  if (argc != 2)
+  if (argc != 1)
     return rtems_trace_buffering_wrong_number_of_args ();
 
   if (!rtems_trace_buffering_present ())
@@ -640,59 +644,37 @@ rtems_trace_buffering_shell_save_raw (int argc, char *argv[])
 
   trace_buffer = rtems_trace_buffering_buffer ();
   records = rtems_trace_buffering_buffer_in ();
+  uint32_t traces = rtems_trace_names_size ();
 
-  out = open (argv[1], O_WRONLY | O_TRUNC | O_CREAT,
-              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-  if (out < 0)
-  {
-    printf ("error: opening file: %s: %s\n", argv[1], strerror(errno));
-    return 1;
-  }
-
-  #define SAVE_BUF_SIZE (1024)
-  buf = malloc(SAVE_BUF_SIZE);
-  if (!buf)
-  {
-    close (out);
-    printf ("error: no memory\n");
-  }
-
-  memset (buf, 0, SAVE_BUF_SIZE);
-  in = buf;
-
-  /*
-   * Write it.
-   */
-  if (!rtems_trace_buffering_file_write (out, buf, in - buf))
-  {
-    free (buf);
-    close (out);
-    return 1;
-  }
-  free (buf);
-
-  buffer = (uint8_t*) trace_buffer;
+  buffer = (uint32_t*) trace_buffer;
+  buffer += 15;
+  records = records - 15;
   length = records * sizeof (uint32_t);
-
-  while (length)
+  while (length > 0)
   {
-    ssize_t w = write (out, buffer, length);
-    if (w < 0)
+    if (*buffer == -1040441407)
     {
-      printf ("error: write failed: %s\n", strerror(errno));
-      close (out);
-      return 1;
+      if (*(buffer + 1) != prev_stream_id)
+      {
+        char *snum;
+        if (prev_stream_id != -1)
+          fclose (out);
+        itoa (*(buffer + 1), snum, 5);
+        out = fopen (snum, "a+b");
+        fseek (out, 0, SEEK_END);
+        prev_stream_id = *(buffer + 1);
+      }
+      if (ftell (out) != 0)
+      {
+        buffer += 2;
+        length -= 8;
+      }
     }
-    if (w == 0)
-    {
-      printf ("error: write failed: EOF\n");
-      close (out);
-      return 1;
-    }
-    length -= w;
-    buffer += w;
+    fwrite (buffer, 1, 4, out);
+    buffer += 1;
+    length -= 4;
   }
-  close (out);
+  fclose (out);
   return 0;
 }
 
@@ -747,7 +729,7 @@ static const rtems_trace_buffering_shell_cmd_t table[] =
   {
     "save-raw",
     rtems_trace_buffering_shell_save_raw,
-    " file                  : Save the raw trace buffer to a file"
+    "                       : Save the raw trace buffer to a file"
   },
 };
 
