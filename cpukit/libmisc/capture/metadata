@@ -1,0 +1,70 @@
+/* CTF 1.8 */
+typealias integer { size = 8; align = 8; signed = false; } := uint8_t;
+typealias integer { size = 32; align = 8; signed = false; } := uint32_t;
+typealias integer { size = 64; align = 8; signed = false; } := uint64_t;
+typealias integer { size = 64; align = 8; signed = false; } := timestamp_t;
+typedef enum events_e  : uint32_t {
+RTEMS_TASK_RECORD = 0,
+RTEMS_CAPTURE_CREATED_BY_EVENT = 17,
+RTEMS_CAPTURE_CREATED_EVENT = 18,
+RTEMS_CAPTURE_STARTED_BY_EVENT = 19,
+RTEMS_CAPTURE_STARTED_EVENT = 20,
+RTEMS_CAPTURE_RESTARTED_BY_EVENT = 21,
+RTEMS_CAPTURE_RESTARTED_EVENT = 22,
+RTEMS_CAPTURE_DELETED_BY_EVENT = 23,
+RTEMS_CAPTURE_DELETED_EVENT = 24,
+RTEMS_CAPTURE_TERMINATED_EVENT = 25,
+RTEMS_CAPTURE_BEGIN_EVENT = 26,
+RTEMS_CAPTURE_EXITTED_EVENT = 27,
+RTEMS_CAPTURE_SWITCHED_OUT_EVENT = 28,
+RTEMS_CAPTURE_SWITCHED_IN_EVENT = 29,
+} event_enum;
+
+trace {
+    major = 1;
+    minor = 8;
+    byte_order = le;
+    packet.header := struct {
+        uint32_t magic;
+        uint32_t stream_id;
+    };
+};
+
+stream {
+    id = 0;
+    event.header := struct {
+        uint32_t id;
+    };
+};
+
+event {
+    name = "TASK_RECORD";
+    id = 0;
+    stream_id = 0;
+    fields := struct {
+        uint32_t cpu;
+        uint64_t time;
+        uint32_t taskid;
+        uint32_t name;
+        uint32_t real_priority;
+        uint32_t current_priority;
+        uint32_t start_priority;
+        uint32_t stack_size;
+        event_enum event_name;
+    };
+};
+
+event {
+    name = "CAPTURE_RECORD";
+    id = 1;
+    stream_id = 0;
+    fields := struct {
+        uint32_t cpu;
+        uint64_t time;
+        uint32_t diff;
+        uint32_t taskid;
+        uint32_t real_priority;
+        uint32_t current_priority;
+        event_enum event_name;
+    };
+};
