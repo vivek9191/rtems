@@ -302,10 +302,11 @@ void rtems_capture_print_timestamp (uint64_t uptime);
  * @param[in] cpu specifies the cpu the cpu the record was logged on.
  * @param[in] rec specifies the task record.
  */
-void rtems_capture_print_record_task(
+uint32_t rtems_capture_print_record_task(
   uint32_t                cpu,
   rtems_capture_record_t* rec,
-  char*                   filename
+  char*                   buf,
+  char                    format
 );
 
 /**
@@ -318,11 +319,12 @@ void rtems_capture_print_record_task(
  * @param[in] rec specifies the record.
  * @param[in] diff specifies the time between this and the last capture record.
  */
-void rtems_capture_print_record_capture(
+uint32_t rtems_capture_print_record_capture(
   uint32_t                cpu,
   rtems_capture_record_t* rec,
   uint64_t                diff,
-  char*                   filename
+  char*                   buf,
+  char                    format
 );
 
 /**
